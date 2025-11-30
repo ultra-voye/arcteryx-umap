@@ -5,24 +5,34 @@ import random
 from os.path import dirname, join
 
 
-KEEP_PROB = 0.00025
+KEEP_PROB = 0.005
+TARGET_TEXTURES = ["Female 01.png", ".HG_Eye_Color.png", "TeethTongueSet_C_2K.png", "TeethTongueSet_C_2K.png"]
 
 
-def get_image_from_object(obj):
+def get_image_from_object(obj, target_name):
     mat = obj.active_material
     if not mat or not mat.use_nodes:
         return None
 
+    clean_target = os.path.splitext(target_name)[0].lower()
+
     for node in mat.node_tree.nodes:
-        if node.type == 'TEX_IMAGE' and node.image is not None:
-            image = node.image
+        if node.type == 'TEX_IMAGE' and node.image:
 
-            src_path = bpy.path.abspath(image.filepath)
-            filename = os.path.basename(src_path)
-            dst_path = os.path.join(output_dir, filename)
-            image.save(filepath=dst_path)
+            clean_name = os.path.splitext(node.image.name)[0].lower()
 
-            return image
+            if clean_name == clean_target:
+                image = node.image
+
+                image.reload()
+
+                src_path = bpy.path.abspath(image.filepath)
+                filename = os.path.basename(src_path)
+                dst_path = os.path.join(output_dir, filename)
+                image.save(filepath=dst_path)
+
+                return image
+
     return None
 
 
@@ -67,7 +77,7 @@ with open(filepath, mode="w", newline="", encoding="utf-8") as csv_file:
     writer = csv.writer(csv_file)
     writer.writerow(["object_name", "face_index", "vert_index", "x", "y", "z", "r", "g", "b"])
 
-    for obj in mesh_objects:
+    for obj, target_texture in zip(mesh_objects, TARGET_TEXTURES):
         obj_eval = obj.evaluated_get(depsgraph)
         mesh = obj_eval.to_mesh()
         world_matrix = obj.matrix_world
@@ -77,7 +87,7 @@ with open(filepath, mode="w", newline="", encoding="utf-8") as csv_file:
             continue
 
         uv_layer = mesh.uv_layers.active
-        img = get_image_from_object(obj)
+        img = get_image_from_object(obj, target_texture)
 
         for poly in mesh.polygons:
             for loop_index in poly.loop_indices:
